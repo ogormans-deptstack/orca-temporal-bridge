@@ -36,14 +36,11 @@ func WorkerWorkflow(ctx workflow.Context, taskDef interface{}) (interface{}, err
 	return nil, nil
 }
 
-// RegisterWorkflows registers all workflows with Temporal.
-func RegisterWorkflows(r workflow.Registry) {
-	r.RegisterWorkflowWithOptions(
-		CoordinatorWorkflow,
-		workflow.RegisterOptions{Name: "CoordinatorWorkflow"},
-	)
-	r.RegisterWorkflowWithOptions(
-		WorkerWorkflow,
-		workflow.RegisterOptions{Name: "WorkerWorkflow"},
-	)
+// RegisterWorkflows registers all workflows with Temporal worker.
+// This is a placeholder for Sprint 1.3 — actual worker registration
+// will be done when the Temporal worker is initialized in main.
+func RegisterWorkflows() {
+	// TODO: Register workflows with worker
+	// r.RegisterWorkflow(CoordinatorWorkflow)
+	// r.RegisterWorkflow(WorkerWorkflow)
 }
