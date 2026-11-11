@@ -1,31 +1,45 @@
 services:
+  # Temporal Server - Development mode
+  # Uses SQLite for local storage, runs all services in-process
+  # For CI/CD: Run `temporal server start-dev` instead (no Docker needed)
+  #
+  # Local usage:
+  #   docker-compose up
+  #   Connect to: localhost:7233 (gRPC), localhost:8233/ui (Web UI)
+  #
+  # Recommended for local development:
+  #   temporal server start-dev
+  #   (faster startup, no Docker overhead)
+
   temporal:
+    image: temporalapi/temporal-server:latest
     container_name: temporal
-    image: temporalapi/temporal:latest
     ports:
-      - "7233:7233"  # gRPC
-      - "6933:6933"  # gRPC (TLS)
-      - "7234:7234"  # HTTP
+      - "7233:7233"    # gRPC
+      - "7234:7234"    # HTTP
+      - "6933:6933"    # gRPC TLS
+      - "8233:8233"    # Web UI
     environment:
       - TEMPORAL_LOG_LEVEL=info
-      - TEMPORAL_DB_DRIVER=sqlite
-      - TEMPORAL_DB_DRIVER_SQLITE_FILENAME=/var/lib/temporal/temporal.db
-      - TEMPORAL_PERSISTENCE_NUMHISTORYSHARD=4
+      - DB=sqlite
+      - SQLITE_FILENAME=/var/lib/temporal/temporal.db
     volumes:
       - temporal-data:/var/lib/temporal
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7234"]
-      interval: 2s
-      timeout: 5s
-      retries: 10
+      test: ["CMD", "temporal", "workflow", "list"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
 
   temporal-ui:
+    image: temporalapi/temporal-ui:latest
     container_name: temporal-ui
-    image: temporalapi/ui:latest
     ports:
       - "8080:8080"
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
     depends_on:
       temporal:
         condition: service_healthy
