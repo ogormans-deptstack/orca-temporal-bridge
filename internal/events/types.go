@@ -113,7 +113,7 @@ func (m *MockOrcaEvent) ToMap() map[string]interface{} {
 	if m.TaskID != "" {
 		result["task_id"] = m.TaskID
 	}
-	if m.Metadata != nil && len(m.Metadata) > 0 {
+	if len(m.Metadata) > 0 {
 		result["metadata"] = m.Metadata
 	}
 	if m.DecisionID != "" {
@@ -128,7 +128,7 @@ func (m *MockOrcaEvent) ToMap() map[string]interface{} {
 	if m.DurationMs > 0 {
 		result["duration_ms"] = m.DurationMs
 	}
-	if m.Result != nil && len(m.Result) > 0 {
+	if len(m.Result) > 0 {
 		result["result"] = m.Result
 	}
 	if m.Success {
