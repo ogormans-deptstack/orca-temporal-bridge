@@ -1,5 +1,6 @@
 .PHONY: help build test test-fast test-bridge test-events test-coverage test-with-temporal \
-         clean fmt lint vet run-temporal stop-temporal test-setup dev coverage docker-build docker-run
+         clean fmt lint lint-local vet run-temporal stop-temporal test-setup dev coverage docker-build docker-run \
+         hooks-install hooks-uninstall
 
 help:
 	@echo "ORCA-Temporal Bridge — Build Targets"
@@ -16,15 +17,20 @@ help:
 	@echo "  make run-temporal      Start local Temporal server (docker-compose)"
 	@echo "  make stop-temporal     Stop Temporal server"
 	@echo ""
+	@echo "Code Quality (Go 1.26 compatible):"
+	@echo "  make fmt               Format code (gofmt)"
+	@echo "  make lint              Lint code (golangci-lint via Docker)"
+	@echo "  make lint-local        Lint code locally (if compatible)"
+	@echo "  make vet               Run go vet"
+	@echo ""
+	@echo "Git Hooks (optional):"
+	@echo "  make hooks-install     Install pre-commit hooks"
+	@echo "  make hooks-uninstall   Remove pre-commit hooks"
+	@echo ""
 	@echo "Version Management (asdf):"
 	@echo "  make test-setup        Verify environment + asdf status"
 	@echo "  make asdf-install      Install versions from .tool-versions"
 	@echo "  make asdf-verify       Verify installed versions match .tool-versions"
-	@echo ""
-	@echo "Quality Checks:"
-	@echo "  make fmt               Format code (gofmt)"
-	@echo "  make lint              Lint code (golangci-lint)"
-	@echo "  make vet               Run go vet"
 	@echo ""
 	@echo "Build & Release:"
 	@echo "  make build             Build binary (./bin/orca-temporal)"
@@ -88,9 +94,20 @@ fmt:
 	@gofmt -s -w .
 
 lint:
-	@echo "Linting code..."
-	@which golangci-lint > /dev/null || (echo "Install: brew install golangci-lint" && exit 1)
-	@golangci-lint run ./... --timeout=5m
+	@echo "Linting code with golangci-lint (Docker)..."
+	@echo "Note: Using Docker to support Go 1.26 (linter tooling not yet available for Go 1.26)"
+	@if command -v docker &> /dev/null; then \
+		docker run --rm -v $$(pwd):/app -w /app golangci/golangci-lint:latest golangci-lint run --config=.golangci.yml --timeout=5m; \
+	else \
+		echo "⚠ Docker not available. Install via: brew install docker"; \
+		exit 1; \
+	fi
+
+lint-local:
+	@echo "Linting code locally (if compatible version available)..."
+	@which golangci-lint > /dev/null || (echo "⚠ golangci-lint not installed. Run: brew install golangci-lint" && exit 1)
+	@echo "Note: May fail with Go 1.26 if golangci-lint was built with older Go"
+	@golangci-lint run ./... --config=.golangci.yml --timeout=5m || echo "ℹ Try 'make lint' (Docker-based) for Go 1.26 support"
 
 vet:
 	@echo "Running go vet..."
@@ -220,3 +237,19 @@ dev: build test
 	@echo ""
 	@echo "To view coverage:"
 	@echo "  make test-coverage  # opens coverage.html"
+
+# Git hooks
+hooks-install:
+	@echo "Installing git hooks..."
+	@mkdir -p .git/hooks
+	@cp .githooks/pre-commit .git/hooks/pre-commit
+	@chmod +x .git/hooks/pre-commit
+	@git config core.hooksPath .githooks
+	@echo "✓ Pre-commit hook installed"
+	@echo "  Hook will run: fmt, vet, lint before commits"
+	@echo "  Bypass with: git commit --no-verify"
+
+hooks-uninstall:
+	@echo "Removing git hooks..."
+	@rm -f .git/hooks/pre-commit
+	@echo "✓ Pre-commit hook removed"

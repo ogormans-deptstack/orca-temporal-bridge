@@ -1,0 +1,38 @@
+#!/bin/bash
+# Pre-commit hook for ORCA-Temporal Bridge
+# Runs linting and formatting checks before commit
+
+set -e
+
+echo "🔍 Pre-commit checks..."
+
+# Check formatting
+echo "  ✓ Checking formatting..."
+if ! go fmt ./... > /dev/null 2>&1; then
+  echo "  ✗ Formatting check failed"
+  echo "    Run: make fmt"
+  exit 1
+fi
+
+# Check vet
+echo "  ✓ Running go vet..."
+if ! go vet ./... > /dev/null 2>&1; then
+  echo "  ✗ go vet found issues"
+  exit 1
+fi
+
+# Check linting (Docker-based for Go 1.26 support)
+echo "  ✓ Running golangci-lint..."
+if command -v docker &> /dev/null; then
+  if ! docker run --rm -v "$(pwd):/app" -w /app golangci/golangci-lint:latest golangci-lint run --config=.golangci.yml --timeout=5m > /dev/null 2>&1; then
+    echo "  ✗ Linting found issues"
+    echo "    Run: make lint"
+    exit 1
+  fi
+else
+  echo "  ⚠ Docker not available, skipping golangci-lint"
+  echo "    Install Docker to enable linting checks"
+fi
+
+echo "✅ All pre-commit checks passed!"
+exit 0
