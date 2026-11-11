@@ -166,11 +166,10 @@ jobs:
 
       - name: Start Temporal Server
         run: |
-          # Download pre-built Temporal CLI (avoids go.mod replace directive issue)
+          # Download pre-built Temporal CLI
+          curl -fsSL https://temporal.download/cli/archive/latest?platform=linux&arch=amd64 > /tmp/temporal.tar.gz
           mkdir -p /tmp/temporal-bin
-          cd /tmp/temporal-bin
-          curl -sL https://temporal.download/cli/archive/latest?platform=linux&arch=amd64 -o temporal.tar.gz
-          tar -xzf temporal.tar.gz
+          tar -xzf /tmp/temporal.tar.gz -C /tmp/temporal-bin
           
           # Start Temporal development server in background
           nohup /tmp/temporal-bin/temporal server start-dev > /tmp/temporal.log 2>&1 &
@@ -250,7 +249,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
-          version: latest
+          version: v1.66.0
           args: --config=.golangci.yml --timeout=5m
 
   # Generate sprint summary and merge report

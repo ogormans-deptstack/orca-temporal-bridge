@@ -31,7 +31,8 @@ formatters:
     - goimports
 
 output:
-  format: colored-line-number
+  formats:
+    - colored-line-number
   sort-order:
     - file
   sort-results: true
