@@ -3,6 +3,7 @@
 **Status:** Planned (after Sprint 1.3 completes)  
 **Priority:** Medium  
 **Estimated effort:** 2-3 days  
+**Tracking:** See [SPRINT_1_4_CHECKLIST.md](SPRINT_1_4_CHECKLIST.md) for step-by-step implementation  
 
 ---
 

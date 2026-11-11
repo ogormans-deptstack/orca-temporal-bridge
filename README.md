@@ -259,5 +259,6 @@ Questions? Open an issue or discussion on GitHub.
 - Lint strictness (code style checks)
 - Docker login for Temporal integration tests
 - See [SPRINT_1_4_PLAN.md](SPRINT_1_4_PLAN.md) for detailed roadmap
+- See [SPRINT_1_4_CHECKLIST.md](SPRINT_1_4_CHECKLIST.md) for step-by-step implementation tasks
 
 **Ready to share with team?** Yes, once you push this commit! All core tests pass.
