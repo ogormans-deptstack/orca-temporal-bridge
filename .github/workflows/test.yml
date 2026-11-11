@@ -166,11 +166,14 @@ jobs:
 
       - name: Start Temporal Server
         run: |
-          # Install Temporal CLI via go install (Go 1.26 compatible now)
-          go install github.com/temporalio/cli/cmd/temporal@v1.10.0
+          # Download pre-built Temporal CLI binary (avoids go.mod replace directive issue)
+          mkdir -p /tmp/temporal-bin
+          curl -fsSL https://github.com/temporalio/cli/releases/download/v1.10.0/temporal-v1.10.0-linux-amd64.tar.gz -o /tmp/temporal.tar.gz
+          tar -xzf /tmp/temporal.tar.gz -C /tmp/temporal-bin
+          export PATH="/tmp/temporal-bin:$PATH"
           
           # Start Temporal development server in background
-          temporal server start-dev &
+          nohup temporal server start-dev > /tmp/temporal.log 2>&1 &
           TEMPORAL_PID=$!
           echo $TEMPORAL_PID > /tmp/temporal.pid
           
@@ -184,6 +187,7 @@ jobs:
             sleep 1
           done
           echo "❌ Temporal failed to start"
+          cat /tmp/temporal.log
           exit 1
 
       - name: Run integration tests
@@ -246,7 +250,6 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
-          version: v2.15.0
           args: --config=.golangci.yml --timeout=5m
 
   # Generate sprint summary and merge report
