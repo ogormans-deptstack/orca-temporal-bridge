@@ -153,6 +153,36 @@ jobs:
     runs-on: ubuntu-latest
     needs: verify-versions
     
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: temporal
+          POSTGRES_PASSWORD: temporal
+          POSTGRES_DB: temporal
+        options: >-
+          --health-cmd "pg_isready -U temporal"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      temporal:
+        image: temporalapi/temporal-server:latest
+        env:
+          DB: postgres12
+          POSTGRES_SEEDS: postgres
+          POSTGRES_USER: temporal
+          POSTGRES_PASSWORD: temporal
+        options: >-
+          --health-cmd "temporal workflow list || true"
+          --health-interval 5s
+          --health-timeout 10s
+          --health-retries 5
+        ports:
+          - 7233:7233
+    
     steps:
       - uses: actions/checkout@v4
 
@@ -164,29 +194,17 @@ jobs:
       - name: Download Go dependencies
         run: go mod tidy && go mod download
 
-      - name: Start Temporal Server
+      - name: Wait for Temporal to be healthy
         run: |
-          # Download pre-built Temporal CLI
-          curl -fsSL https://temporal.download/cli/archive/latest?platform=linux&arch=amd64 > /tmp/temporal.tar.gz
-          mkdir -p /tmp/temporal-bin
-          tar -xzf /tmp/temporal.tar.gz -C /tmp/temporal-bin
-          
-          # Start Temporal development server in background
-          nohup /tmp/temporal-bin/temporal server start-dev > /tmp/temporal.log 2>&1 &
-          echo $! > /tmp/temporal.pid
-          
-          # Wait for server to be ready
-          for i in {1..30}; do
-            if /tmp/temporal-bin/temporal workflow list --address localhost:7233 2>/dev/null; then
+          for i in {1..60}; do
+            if nc -z localhost 7233; then
               echo "✓ Temporal is ready"
               exit 0
             fi
-            echo "Waiting for Temporal... ($i/30)"
+            echo "Waiting for Temporal... ($i/60)"
             sleep 1
           done
-          
           echo "❌ Temporal failed to start"
-          cat /tmp/temporal.log
           exit 1
 
       - name: Run integration tests
@@ -198,10 +216,7 @@ jobs:
 
       - name: Stop Temporal Server
         if: always()
-        run: |
-          if [ -f /tmp/temporal.pid ]; then
-            kill $(cat /tmp/temporal.pid) 2>/dev/null || true
-          fi
+        run: docker-compose down 2>/dev/null || true
 
   # Build check
   build:
@@ -249,7 +264,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
-          version: v1.66.0
+          version: v2.15.0
           args: --config=.golangci.yml --timeout=5m
 
   # Generate sprint summary and merge report
