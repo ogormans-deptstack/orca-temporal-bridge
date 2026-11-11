@@ -154,15 +154,34 @@ jobs:
     needs: verify-versions
     
     services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: temporal
+          POSTGRES_PASSWORD: temporal
+          POSTGRES_DB: temporal
+        options: >-
+          --health-cmd "pg_isready -U temporal"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
       temporal:
-        image: ghcr.io/temporalapi/server:latest
+        image: temporalio/auto-setup:latest
+        env:
+          DB: postgres12
+          POSTGRES_SEEDS: postgres
+          POSTGRES_USER: temporal
+          POSTGRES_PASSWORD: temporal
+        options: >-
+          --health-cmd "temporal workflow list"
+          --health-interval 5s
+          --health-timeout 10s
+          --health-retries 5
         ports:
           - 7233:7233
-        options: >-
-          --health-cmd="curl -f http://localhost:7933/health || exit 1"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
 
     steps:
       - uses: actions/checkout@v4
