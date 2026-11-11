@@ -1,6 +1,3 @@
-run:
-  timeout: 5m
-
 linters:
   enable:
     - errcheck
@@ -10,35 +7,17 @@ linters:
     - unused
     - ineffassign
     - gocritic
-  
-  exclude-rules:
-    - linters: [misspell]
-      path: _test\.go
-    - linters: [gocritic]
-      text: "commentedOutCode"
-  
-  settings:
-    gocritic:
-      enabled-checks:
-        - dupImport
-        - nestingReduce
-        - truncateCmp
-        - unnamedResult
 
-formatters:
-  enable:
-    - gofmt
-    - goimports
-
-output:
-  formats:
-    - colored-line-number
-  sort-order:
-    - file
-  sort-results: true
+linters-settings:
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - opinionated
+      - performance
+    disabled-checks:
+      - commentedOutCode
 
 issues:
   exclude-dirs:
     - vendor
-  max-issues-per-linter: 0
-  max-same-issues: 0

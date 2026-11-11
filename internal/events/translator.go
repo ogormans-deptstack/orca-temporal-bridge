@@ -193,7 +193,7 @@ func normalizeEventType(eventType string) string {
 // TranslateTemporalEvent converts a Temporal event to a BridgeEvent.
 func (t *Translator) TranslateTemporalEvent(temporalEvent interface{}) (*BridgeEvent, error) {
 	if temporalEvent == nil {
-		return nil, fmt.Errorf("Temporal event is nil")
+		return nil, fmt.Errorf("temporal event is nil")
 	}
 
 	// Temporal events will be more structured (Protocol Buffer)

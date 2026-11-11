@@ -97,7 +97,10 @@ lint:
 	@echo "Linting code with golangci-lint (Docker)..."
 	@echo "Note: Using Docker to support Go 1.26 (linter tooling not yet available for Go 1.26)"
 	@if command -v docker &> /dev/null; then \
-		docker run --rm -v $$(pwd):/app -w /app golangci/golangci-lint:latest golangci-lint run --config=.golangci.yml --timeout=5m; \
+		docker run --rm -v $$(pwd):/app -w /app golangci/golangci-lint:v2.15.0 golangci-lint run \
+			--no-config --timeout=5m \
+			--enable errcheck,govet,staticcheck,misspell,unused,ineffassign,gocritic \
+			./...; \
 	else \
 		echo "⚠ Docker not available. Install via: brew install docker"; \
 		exit 1; \

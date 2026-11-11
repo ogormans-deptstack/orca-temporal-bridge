@@ -14,7 +14,7 @@ import (
 func TestBridge_Lifecycle(t *testing.T) {
 	ctx := context.Background()
 	mockProvider := NewMockEventProvider()
-	defer mockProvider.Close()
+	defer func() { _ = mockProvider.Close() }()
 
 	config := Config{
 		TemporalHost:  "localhost",
@@ -49,7 +49,7 @@ func TestBridge_Configuration(t *testing.T) {
 
 	// Test valid config
 	mockProvider := NewMockEventProvider()
-	defer mockProvider.Close()
+	defer func() { _ = mockProvider.Close() }()
 
 	config := Config{
 		TemporalHost:  "localhost",
@@ -74,7 +74,7 @@ func TestBridge_Configuration(t *testing.T) {
 func TestBridge_GetStatus(t *testing.T) {
 	ctx := context.Background()
 	mockProvider := NewMockEventProvider()
-	defer mockProvider.Close()
+	defer func() { _ = mockProvider.Close() }()
 
 	config := Config{
 		TemporalHost:  "localhost",
@@ -98,7 +98,7 @@ func TestBridge_GetStatus(t *testing.T) {
 // TestEventListener_Creation tests listener initialization
 func TestEventListener_Creation(t *testing.T) {
 	mockProvider := NewMockEventProvider()
-	defer mockProvider.Close()
+	defer func() { _ = mockProvider.Close() }()
 
 	eventChan := make(chan *events.BridgeEvent, 100)
 	listener := NewEventListener(mockProvider, eventChan)
@@ -115,7 +115,7 @@ func TestEventListener_Subscription(t *testing.T) {
 	defer cancel()
 
 	mockProvider := NewMockEventProvider()
-	defer mockProvider.Close()
+	defer func() { _ = mockProvider.Close() }()
 
 	eventChan := make(chan *events.BridgeEvent, 100)
 	listener := NewEventListener(mockProvider, eventChan)
@@ -169,7 +169,7 @@ func TestEventFlusher_Creation(t *testing.T) {
 // TestMockEventProvider_CoordinatorStarted tests mock provider event emission
 func TestMockEventProvider_CoordinatorStarted(t *testing.T) {
 	provider := NewMockEventProvider()
-	defer provider.Close()
+	defer func() { _ = provider.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
@@ -200,7 +200,7 @@ func TestMockEventProvider_CoordinatorStarted(t *testing.T) {
 // TestMockEventProvider_WorkerSpawned tests worker spawned event
 func TestMockEventProvider_WorkerSpawned(t *testing.T) {
 	provider := NewMockEventProvider()
-	defer provider.Close()
+	defer func() { _ = provider.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
@@ -228,7 +228,7 @@ func TestMockEventProvider_WorkerSpawned(t *testing.T) {
 // TestMockEventProvider_AgentDecisionMade tests agent decision event
 func TestMockEventProvider_AgentDecisionMade(t *testing.T) {
 	provider := NewMockEventProvider()
-	defer provider.Close()
+	defer func() { _ = provider.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
@@ -256,7 +256,7 @@ func TestMockEventProvider_AgentDecisionMade(t *testing.T) {
 // TestMockEventProvider_WorkerCompleted tests worker completed event
 func TestMockEventProvider_WorkerCompleted(t *testing.T) {
 	provider := NewMockEventProvider()
-	defer provider.Close()
+	defer func() { _ = provider.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
@@ -283,7 +283,7 @@ func TestMockEventProvider_WorkerCompleted(t *testing.T) {
 // TestMockEventProvider_WorkerFailed tests worker failed event
 func TestMockEventProvider_WorkerFailed(t *testing.T) {
 	provider := NewMockEventProvider()
-	defer provider.Close()
+	defer func() { _ = provider.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
@@ -311,7 +311,7 @@ func TestMockEventProvider_WorkerFailed(t *testing.T) {
 // TestMockEventProvider_MultipleEvents tests emitting multiple events
 func TestMockEventProvider_MultipleEvents(t *testing.T) {
 	provider := NewMockEventProvider()
-	defer provider.Close()
+	defer func() { _ = provider.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
