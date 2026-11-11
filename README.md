@@ -19,6 +19,33 @@ This bridge connects both, enabling coordinated multi-agent systems with full du
 - 🛡️ **Fault Tolerance**: Automatic recovery on agent/coordinator failure
 - 🌍 **Multi-Language**: Agents in Go, Python, TypeScript all captured uniformly
 
+## Sprint 1.3: Production-Ready CI/CD & Version Management
+
+This sprint introduces tools for team collaboration:
+
+### 🔧 Version Management (asdf)
+- **Go 1.21.6** and **Node.js 22.0.0** pinned in `.tool-versions`
+- CI validates versions on every push
+- Ensures all developers and CI use identical toolchains
+- See [.tool-versions](.tool-versions) for pinned versions
+
+### 📊 Sprint Dashboard & Merge Visibility
+- **Automated reports** generated on every merge to main
+- Shows test results, coverage changes, what's deployed
+- 30-day artifact retention for tracking progress
+- See [SPRINT_DASHBOARD.md](SPRINT_DASHBOARD.md) for dashboard details
+
+### 🛡️ Branch Protection
+- **8 protection rules** on main branch (all CI must pass, 1 review, signed commits, etc.)
+- Prevents broken code from reaching production
+- Enabled after all CI jobs pass
+- See [BRANCH_PROTECTION.md](BRANCH_PROTECTION.md) for rules
+
+### 📄 Documentation
+- **[SETUP.md](SETUP.md)** — Complete developer onboarding (asdf, local tools, test running)
+- **[SPRINT_1_3_ENHANCEMENT.md](SPRINT_1_3_ENHANCEMENT.md)** — Technical details of this sprint
+- All guides linked from this README for discoverability
+
 ## Architecture
 
 ```
@@ -50,9 +77,35 @@ This bridge connects both, enabling coordinated multi-agent systems with full du
 
 ### Prerequisites
 
-- Go 1.21+
+- **Go 1.21.6+** (pinned via asdf)
+- **Node.js 22.0.0+** (pinned via asdf)
 - Docker (for Temporal server)
-- `go.temporal.io/sdk` installed
+- `asdf` version manager (recommended for reproducible builds)
+
+### Setup (1 minute)
+
+**New to this project?** → See [SETUP.md](SETUP.md) for detailed installation.
+
+Quick start with asdf:
+
+```bash
+# Install asdf if needed
+brew install asdf  # macOS
+# or: https://asdf-vm.com/guide/getting-started.html
+
+# Install pinned tool versions
+asdf install
+asdf env exec make test  # Verify setup
+
+# All set! Development tools are ready.
+```
+
+Without asdf:
+```bash
+# Just ensure Go 1.21+ installed
+go version  # Should be 1.21.6 or compatible
+make test
+```
 
 ### Local Development
 
@@ -118,6 +171,10 @@ history, _ := client.GetWorkflowHistory(ctx, workflowID)
 
 ## Documentation
 
+- **[SETUP.md](SETUP.md)** — Developer onboarding, asdf installation, environment verification (Sprint 1.3)
+- **[SPRINT_DASHBOARD.md](SPRINT_DASHBOARD.md)** — Merge visibility, sprint reports, coverage tracking (Sprint 1.3)
+- **[BRANCH_PROTECTION.md](BRANCH_PROTECTION.md)** — Branch rules, CI requirements, setup automation (Sprint 1.3)
+- **[SPRINT_1_3_ENHANCEMENT.md](SPRINT_1_3_ENHANCEMENT.md)** — Technical details of version management and CI/CD (Sprint 1.3)
 - **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** — Design decisions, event model, failure recovery
 - **[API-REFERENCE.md](docs/API-REFERENCE.md)** — CLI commands, Go SDK, Temporal workflows
 - **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** — Common issues, debugging, recovery
@@ -153,6 +210,27 @@ make coverage
 # Load testing
 make test-load  # 100+ events/minute
 ```
+
+## CI/CD Pipeline
+
+All commits to `main` and `develop` branches trigger automated testing:
+
+- **7 parallel jobs** in GitHub Actions
+- **Tests pass locally?** → Use `make test-fast` before pushing
+- **CI failing?** → Check [.github/workflows/test.yml](.github/workflows/test.yml) for details
+- **Reports** generated after each merge (see Artifacts in GitHub Actions)
+
+**Key jobs:**
+- `verify-versions` — Validates Go/Node versions from `.tool-versions`
+- `test-local` — Unit tests on Go 1.21 and 1.22
+- `test-coverage` — Coverage reporting to Codecov
+- `test-bridge` & `test-events` — Component tests
+- `test-integration` — Full integration with Temporal server
+- `build` — Binary compilation
+- `lint` — Code quality checks (golangci-lint)
+- `sprint-summary` — Merge visibility report (saved as artifact)
+
+**Before sharing with colleagues:** All 7 jobs must pass. Branch protection prevents merging if any job fails.
 
 ## Contributing
 
