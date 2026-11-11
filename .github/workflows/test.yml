@@ -42,7 +42,7 @@ jobs:
     needs: verify-versions
     strategy:
       matrix:
-        go-version: ['1.21', '1.22']
+        go-version: ['1.26']
     
     steps:
       - uses: actions/checkout@v4
@@ -89,7 +89,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: '1.26'
 
       - name: Download Go dependencies
         run: go mod tidy && go mod download
@@ -119,7 +119,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: '1.26'
 
       - name: Download Go dependencies
         run: go mod tidy && go mod download
@@ -139,7 +139,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: '1.26'
 
       - name: Download Go dependencies
         run: go mod tidy && go mod download
@@ -159,35 +159,31 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: '1.26'
 
       - name: Download Go dependencies
         run: go mod tidy && go mod download
 
       - name: Start Temporal Server
         run: |
-          # Download pre-built Temporal CLI (avoid Go 1.26 requirement)
-          mkdir -p /tmp/temporal-bin
-          cd /tmp/temporal-bin
-          curl -sL https://temporal.download/cli/archive/latest?platform=linux&arch=amd64 -o temporal.tar.gz
-          tar -xzf temporal.tar.gz
+          # Install Temporal CLI
+          go install github.com/temporalio/cli/cmd/temporal@latest
           
           # Start Temporal development server in background
-          nohup /tmp/temporal-bin/temporal server start-dev > /tmp/temporal.log 2>&1 &
-          echo $! > /tmp/temporal.pid
+          temporal server start-dev &
+          TEMPORAL_PID=$!
+          echo $TEMPORAL_PID > /tmp/temporal.pid
           
           # Wait for server to be ready
           for i in {1..30}; do
-            if /tmp/temporal-bin/temporal workflow list --address localhost:7233 2>/dev/null; then
+            if temporal workflow list --address localhost:7233 2>/dev/null; then
               echo "✓ Temporal is ready"
               exit 0
             fi
             echo "Waiting for Temporal... ($i/30)"
             sleep 1
           done
-          
           echo "❌ Temporal failed to start"
-          cat /tmp/temporal.log
           exit 1
 
       - name: Run integration tests
@@ -216,7 +212,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: '1.26'
 
       - name: Download Go dependencies
         run: go mod tidy && go mod download
@@ -242,7 +238,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: '1.26'
 
       - name: Download Go dependencies
         run: go mod tidy && go mod download
