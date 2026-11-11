@@ -241,7 +241,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v2
+          version: v2.0.1
           args: --config=.golangci.yml --timeout=5m
 
   # Generate sprint summary and merge report
