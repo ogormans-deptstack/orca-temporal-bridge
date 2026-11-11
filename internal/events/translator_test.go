@@ -471,7 +471,7 @@ func TestTranslateTemporalEvent_NilEvent(t *testing.T) {
 	event, err := tr.TranslateTemporalEvent(nil)
 	assert.Error(t, err)
 	assert.Nil(t, event)
-	assert.Equal(t, "Temporal event is nil", err.Error())
+	assert.Equal(t, "temporal event is nil", err.Error())
 }
 
 // ============================================================================

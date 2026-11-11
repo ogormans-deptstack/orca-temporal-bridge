@@ -118,21 +118,29 @@ vet:
 
 # Temporal infrastructure
 run-temporal:
-	@echo "Starting Temporal server..."
-	@docker-compose up -d
+	@echo "Starting Temporal server (temporal server start-dev)..."
+	@which temporal > /dev/null || (echo "✗ temporal CLI not found. Install via: go install github.com/temporalio/cli/cmd/temporal@latest" && exit 1)
+	@nohup temporal server start-dev > /tmp/temporal.log 2>&1 &
+	@echo $$! > /tmp/temporal.pid
 	@echo "Waiting for Temporal to be ready..."
-	@sleep 3
-	@if docker-compose ps temporal | grep -q Up; then \
-		echo "✓ Temporal running at localhost:7233"; \
-		echo "✓ Temporal UI at http://localhost:8080"; \
-	else \
-		echo "✗ Failed to start Temporal"; \
-		exit 1; \
-	fi
+	@for i in {1..30}; do \
+		if temporal workflow list --address localhost:7233 2>/dev/null; then \
+			echo "✓ Temporal running at localhost:7233"; \
+			break; \
+		fi; \
+		echo "  Waiting... ($$i/30)"; \
+		sleep 1; \
+	done
 
 stop-temporal:
 	@echo "Stopping Temporal server..."
-	@docker-compose down
+	@if [ -f /tmp/temporal.pid ]; then \
+		kill $$(cat /tmp/temporal.pid) 2>/dev/null || true; \
+		rm -f /tmp/temporal.pid; \
+		echo "✓ Temporal stopped"; \
+	else \
+		echo "ℹ Temporal not running"; \
+	fi
 
 test-setup:
 	@echo "Verifying local setup..."
