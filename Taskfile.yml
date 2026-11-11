@@ -1,0 +1,221 @@
+# Taskfile for ORCA-Temporal Bridge (Sprint 1.3)
+# A modern alternative to Make with better cross-platform support
+#
+# Installation:
+#   brew install go-task/tap/go-task
+#   Or: https://taskfile.dev/installation/
+#
+# Usage:
+#   task                    # Show available tasks
+#   task test               # Run tests
+#   task test:fast          # Quick smoke test
+#   task test:coverage      # Full coverage
+#   task dev                # Full dev workflow
+#   task ci                 # Run CI pipeline locally
+
+version: '3'
+
+# Global variables
+vars:
+  GO_VERSION: '1.21'
+  COVERAGE_THRESHOLD: '80'
+  TEMPORAL_HOST: localhost
+  TEMPORAL_PORT: 7233
+  TEMPORAL_NAMESPACE: default
+  TEMPORAL_TASK_QUEUE: orca-bridge
+  BIN_DIR: ./bin
+  COVERAGE_OUT: coverage.out
+  COVERAGE_HTML: coverage.html
+
+env:
+  GOFLAGS: -v
+
+# Task includes for organization
+includes:
+  test: ./tasks/test.yml
+  build: ./tasks/build.yml
+  quality: ./tasks/quality.yml
+  temporal: ./tasks/temporal.yml
+  ci: ./tasks/ci.yml
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  # ====================
+  # Development Workflow
+  # ====================
+
+  dev:
+    desc: 'Full dev workflow: format → build → test'
+    deps:
+      - quality:fmt
+      - build:binary
+      - test:all
+    summary: |
+      ✓ Code formatted
+      ✓ Binary built
+      ✓ All tests passed
+      Ready for commit!
+
+  setup:
+    desc: 'Verify development environment'
+    cmds:
+      - cmd: |
+          echo "=== Environment Setup ===" && \
+          echo "Go: $(go version | awk '{print $3}')" && \
+          echo "Docker: $(docker --version)" && \
+          echo "Docker Compose: $(docker-compose --version)" && \
+          echo "" && \
+          echo "✓ Setup verified"
+        silent: false
+
+  # ====================
+  # Quick Access Tasks
+  # ====================
+
+  test:
+    desc: 'Run all tests (local, no Temporal required)'
+    cmds:
+      - task: test:all
+
+  test:fast:
+    desc: 'Quick smoke test (< 1s)'
+    cmds:
+      - task: test:fast
+
+  test:watch:
+    desc: 'Run tests on file changes'
+    cmds:
+      - task: test:watch
+
+  coverage:
+    desc: 'Generate coverage report'
+    cmds:
+      - task: test:coverage
+
+  build:
+    desc: 'Build binary'
+    cmds:
+      - task: build:binary
+
+  fmt:
+    desc: 'Format all code'
+    cmds:
+      - task: quality:fmt
+
+  lint:
+    desc: 'Run linter'
+    cmds:
+      - task: quality:lint
+
+  vet:
+    desc: 'Run go vet'
+    cmds:
+      - task: quality:vet
+
+  clean:
+    desc: 'Clean build artifacts'
+    cmds:
+      - task: build:clean
+
+  # ====================
+  # Temporal Operations
+  # ====================
+
+  temporal:up:
+    desc: 'Start Temporal server'
+    cmds:
+      - task: temporal:start
+
+  temporal:down:
+    desc: 'Stop Temporal server'
+    cmds:
+      - task: temporal:stop
+
+  temporal:logs:
+    desc: 'View Temporal logs'
+    cmds:
+      - task: temporal:logs
+
+  # ====================
+  # CI/CD Pipeline
+  # ====================
+
+  ci:
+    desc: 'Run full CI pipeline locally'
+    cmds:
+      - task: ci:local
+
+  ci:check:
+    desc: 'Run PR checks (what GitHub Actions runs)'
+    cmds:
+      - task: ci:pr-checks
+
+  # ====================
+  # Help & Documentation
+  # ====================
+
+  help:
+    desc: 'Show detailed help'
+    cmds:
+      - cmd: |
+          cat << 'EOF'
+          ORCA-Temporal Bridge — Taskfile Help (Sprint 1.3)
+          
+          Quick Start:
+            task dev              Full dev workflow (fmt → build → test)
+            task test             Run all tests
+            task test:fast        Quick smoke test (< 1s)
+            task coverage         Generate HTML coverage report
+          
+          Development:
+            task fmt              Format code
+            task lint             Lint code
+            task vet              Run go vet
+            task build            Build binary
+            task clean            Clean artifacts
+          
+          Testing:
+            task test             Run all tests (no Temporal)
+            task test:fast        Smoke test
+            task test:bridge      Bridge tests only
+            task test:events      Event tests only
+            task test:coverage    Full coverage report
+            task test:with-temporal  Integration tests with Temporal
+            task test:watch       Run on file changes
+          
+          Temporal Operations:
+            task temporal:up      Start Temporal server
+            task temporal:down    Stop Temporal server
+            task temporal:logs    View Temporal logs
+          
+          CI/CD:
+            task ci               Run full CI pipeline locally
+            task ci:check         Run PR checks
+          
+          Environment:
+            TEMPORAL_HOST=localhost (default)
+            TEMPORAL_PORT=7233 (default)
+            TEMPORAL_NAMESPACE=default (default)
+          
+          Examples:
+            task dev                              # Full workflow
+            task test:coverage                    # Coverage report
+            task temporal:up && task test:with-temporal && task temporal:down
+            
+          For more info: https://taskfile.dev/
+          EOF
+        silent: false
+
+  version:
+    desc: 'Show version information'
+    cmds:
+      - cmd: |
+          echo "ORCA-Temporal Bridge — Sprint 1.3" && \
+          echo "Go: $(go version)" && \
+          echo "Task: $(task --version 2>/dev/null || echo 'not installed')" && \
+          echo "Make: $(make --version 2>/dev/null | head -1 || echo 'not installed')"
+        silent: false

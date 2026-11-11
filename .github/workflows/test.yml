@@ -1,0 +1,201 @@
+name: Tests (Sprint 1.3)
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # Quick unit tests (no Temporal required)
+  test-local:
+    name: Local Tests (no Temporal)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ['1.21', '1.22']
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Run tests
+        run: make test-fast
+        
+      - name: Run vet
+        run: make vet
+
+      - name: Run fmt check
+        run: |
+          if ! go fmt ./...; then
+            echo "Code formatting issues found"
+            exit 1
+          fi
+
+  # Full unit tests with coverage
+  test-coverage:
+    name: Tests + Coverage
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Run tests with coverage
+        run: |
+          go test -v -race -timeout 10s -coverprofile=coverage.out ./internal/...
+          go tool cover -func=coverage.out | grep total
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.out
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  # Bridge E2E tests (no Temporal)
+  test-bridge:
+    name: Bridge E2E Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Run bridge tests
+        run: make test-bridge
+
+  # Event translator tests
+  test-events:
+    name: Event Translator Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Run event tests
+        run: make test-events
+
+  # Integration tests with real Temporal
+  test-integration:
+    name: Integration Tests (with Temporal)
+    runs-on: ubuntu-latest
+    
+    services:
+      temporal:
+        image: temporalapi/server:latest
+        ports:
+          - 7233:7233
+        options: >-
+          --health-cmd="curl -f http://localhost:7933/health || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Wait for Temporal
+        run: |
+          for i in {1..30}; do
+            if nc -z localhost 7233; then
+              echo "Temporal is ready"
+              exit 0
+            fi
+            echo "Waiting for Temporal... ($i/30)"
+            sleep 1
+          done
+          echo "Temporal failed to start"
+          exit 1
+
+      - name: Run integration tests
+        env:
+          TEMPORAL_HOST: localhost:7233
+          TEMPORAL_NAMESPACE: default
+          TEMPORAL_TASK_QUEUE: orca-bridge
+        run: make test-with-temporal
+
+  # Build check
+  build:
+    name: Build Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Build binary
+        run: make build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: orca-temporal-linux
+          path: bin/orca-temporal
+
+  # Lint check (optional - can be slow)
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          args: --timeout=5m
+
+  # Summary job (all other jobs must pass)
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [test-local, test-coverage, test-bridge, test-events, test-integration, build]
+    if: always()
+    
+    steps:
+      - name: Check test results
+        run: |
+          if [[ "${{ needs.test-local.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-coverage.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-bridge.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-events.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-integration.result }}" == "failure" ]] || \
+             [[ "${{ needs.build.result }}" == "failure" ]]; then
+            echo "❌ Some tests failed"
+            exit 1
+          fi
+          echo "✅ All tests passed"

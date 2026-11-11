@@ -1,0 +1,176 @@
+version: '3'
+
+# Temporal infrastructure tasks for ORCA-Temporal Bridge
+# Included by main Taskfile.yml
+
+# Variables for this task file
+vars:
+  TEMPORAL_COMPOSE_FILE: docker-compose.yml
+  TEMPORAL_SERVICE: temporal
+  TEMPORAL_READY_TIMEOUT: 30
+
+tasks:
+  start:
+    desc: 'Start Temporal server via docker-compose'
+    summary: |
+      Start local Temporal server
+      - Uses docker-compose.yml
+      - Waits for readiness (port 7233)
+      - UI: http://localhost:8080
+      - gRPC: localhost:7233
+    cmds:
+      - echo "Starting Temporal server..."
+      - docker-compose up -d {{.TEMPORAL_SERVICE}}
+      - echo "Waiting for Temporal to be ready..."
+      - |
+        for i in {1..{{.TEMPORAL_READY_TIMEOUT}}}; do
+          if docker-compose ps {{.TEMPORAL_SERVICE}} | grep -q Up; then
+            sleep 1
+            if nc -z localhost 7233 2>/dev/null; then
+              echo "✓ Temporal running at localhost:7233"
+              echo "✓ UI: http://localhost:8080"
+              exit 0
+            fi
+          fi
+          echo "  Attempt $i/{{.TEMPORAL_READY_TIMEOUT}}..."
+          sleep 1
+        done
+        echo "✗ Timeout waiting for Temporal"
+        exit 1
+
+  stop:
+    desc: 'Stop Temporal server'
+    summary: |
+      Stop and remove Temporal container
+      - Stops docker-compose services
+      - Removes containers
+    cmds:
+      - echo "Stopping Temporal server..."
+      - docker-compose down
+      - echo "✓ Temporal stopped"
+
+  restart:
+    desc: 'Restart Temporal server'
+    summary: |
+      Stop and start Temporal
+      - Useful for clearing state
+      - Preserves configuration
+    cmds:
+      - task: stop
+      - task: start
+
+  status:
+    desc: 'Check Temporal server status'
+    summary: |
+      Show Temporal service status
+      - Container status
+      - Port availability
+      - Service health
+    cmds:
+      - echo "=== Temporal Status ==="
+      - cmd: |
+          if docker-compose ps {{.TEMPORAL_SERVICE}} | grep -q Up; then
+            echo "✓ Running"
+            echo ""
+            docker-compose ps {{.TEMPORAL_SERVICE}}
+            echo ""
+            echo "gRPC: localhost:7233"
+            echo "UI: http://localhost:8080"
+          else
+            echo "✗ Not running"
+          fi
+        silent: false
+
+  logs:
+    desc: 'Show Temporal logs (follows output)'
+    summary: |
+      Tail Temporal container logs
+      - Follows log output
+      - Press Ctrl+C to stop
+      - Shows real-time activity
+    cmds:
+      - docker-compose logs -f {{.TEMPORAL_SERVICE}}
+
+  logs:last:
+    desc: 'Show last 50 lines of Temporal logs'
+    cmds:
+      - docker-compose logs --tail=50 {{.TEMPORAL_SERVICE}}
+
+  ui:
+    desc: 'Open Temporal UI in browser'
+    summary: |
+      Open Temporal Web UI
+      - Requires: task temporal:start
+      - URL: http://localhost:8080
+      - Shows workflows and history
+    preconditions:
+      - sh: docker-compose ps temporal | grep -q Up
+        msg: "Temporal not running. Run: task temporal:start"
+    cmds:
+      - echo "Opening Temporal UI at http://localhost:8080"
+      - cmd: |
+          if command -v open &> /dev/null; then
+            open http://localhost:8080
+          elif command -v xdg-open &> /dev/null; then
+            xdg-open http://localhost:8080
+          else
+            echo "Please open: http://localhost:8080"
+          fi
+        silent: true
+
+  clean:
+    desc: 'Clean Temporal data (remove volumes)'
+    summary: |
+      Remove Temporal volumes
+      - WARNING: Deletes all data!
+      - Useful for fresh start
+      - Run: task temporal:stop first
+    interactive: true
+    cmds:
+      - echo "WARNING: This will delete all Temporal data!"
+      - docker-compose down -v
+      - echo "✓ Temporal volumes cleaned"
+
+  health:
+    desc: 'Check Temporal health'
+    summary: |
+      Check if Temporal is responding
+      - Tests gRPC health endpoint
+      - Requires grpcurl
+    preconditions:
+      - sh: docker-compose ps temporal | grep -q Up
+        msg: "Temporal not running. Run: task temporal:start"
+    cmds:
+      - echo "Checking Temporal health..."
+      - cmd: |
+          if command -v grpcurl &> /dev/null; then
+            grpcurl -plaintext localhost:7233 grpc.health.v1.Health/Check || echo "grpcurl failed"
+          else
+            echo "grpcurl not installed. Checking port instead..."
+            if nc -z localhost 7233; then
+              echo "✓ Temporal port 7233 is open"
+            else
+              echo "✗ Temporal port 7233 is not accessible"
+            fi
+          fi
+        silent: false
+
+  setup:
+    desc: 'Setup and start Temporal'
+    summary: |
+      Complete setup:
+      - Start Temporal
+      - Create default namespace (optional)
+    cmds:
+      - task: start
+      - echo ""
+      - echo "Temporal is ready!"
+      - echo "Visit: http://localhost:8080"
+
+  version:
+    desc: 'Show Temporal version'
+    cmds:
+      - cmd: |
+          TEMPORAL_IMAGE=$(grep 'image:.*temporal' {{.TEMPORAL_COMPOSE_FILE}} | head -1 | awk -F: '{print $NF}')
+          echo "Temporal version: $TEMPORAL_IMAGE"
+        silent: false

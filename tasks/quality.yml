@@ -1,0 +1,156 @@
+version: '3'
+
+# Code quality tasks for ORCA-Temporal Bridge
+# Included by main Taskfile.yml
+
+tasks:
+  fmt:
+    desc: 'Format all code (gofmt)'
+    summary: |
+      Format code using standard gofmt
+      - Runs go fmt on all packages
+      - Uses -s flag (simplify)
+      - Applies -w (write to file)
+    cmds:
+      - echo "Formatting code..."
+      - go fmt ./...
+      - gofmt -s -w .
+      - echo "✓ Code formatted"
+
+  fmt:check:
+    desc: 'Check code format without modifying'
+    summary: |
+      Verify code is formatted correctly
+      - Exits with error if formatting needed
+      - Does not modify files
+      - Useful for CI/CD
+    cmds:
+      - echo "Checking code format..."
+      - cmd: |
+          if [ -n "$(gofmt -s -l .)" ]; then
+            echo "✗ Code formatting issues found:"
+            gofmt -s -l .
+            exit 1
+          fi
+          echo "✓ Code format OK"
+        shell: bash
+
+  vet:
+    desc: 'Run go vet'
+    summary: |
+      Check for suspicious constructs
+      - Examines Go source code
+      - Reports likely mistakes
+      - Catches common errors
+    cmds:
+      - echo "Running go vet..."
+      - go vet ./...
+      - echo "✓ Go vet OK"
+
+  lint:
+    desc: 'Run golangci-lint'
+    summary: |
+      Run linter on all code
+      - Checks code style
+      - Finds issues
+      - Reports problems
+      - Requires: brew install golangci-lint
+    preconditions:
+      - sh: command -v golangci-lint
+        msg: "golangci-lint not installed. Install: brew install golangci-lint"
+    cmds:
+      - echo "Running golangci-lint..."
+      - golangci-lint run ./... --timeout=5m
+      - echo "✓ Lint OK"
+
+  all:
+    desc: 'Run all quality checks (fmt + vet + lint)'
+    summary: |
+      Comprehensive code quality check
+      - Format check
+      - Go vet analysis
+      - Linter (golangci-lint)
+    deps:
+      - fmt:check
+      - vet
+      - lint
+    cmds:
+      - echo "✓ All quality checks passed"
+
+  quick:
+    desc: 'Quick quality checks (fmt + vet only, no lint)'
+    summary: |
+      Fast quality check without full linter
+      - Format check
+      - Go vet only
+      - Skips golangci-lint (slow)
+    deps:
+      - fmt:check
+      - vet
+    cmds:
+      - echo "✓ Quick quality checks passed"
+
+  imports:
+    desc: 'Organize imports (requires goimports)'
+    summary: |
+      Organize and format imports
+      - Removes unused imports
+      - Organizes import order
+      - Install: go install golang.org/x/tools/cmd/goimports@latest
+    preconditions:
+      - sh: command -v goimports
+        msg: "goimports not installed. Install: go install golang.org/x/tools/cmd/goimports@latest"
+    cmds:
+      - echo "Organizing imports..."
+      - goimports -w .
+      - echo "✓ Imports organized"
+
+  tidy:
+    desc: 'Run go mod tidy'
+    summary: |
+      Tidy go.mod and go.sum
+      - Adds missing dependencies
+      - Removes unused dependencies
+      - Updates go.mod/go.sum
+    cmds:
+      - echo "Running go mod tidy..."
+      - go mod tidy
+      - echo "✓ Modules tidy"
+
+  deps:
+    desc: 'Check for outdated dependencies'
+    summary: |
+      List outdated dependencies
+      - Shows available updates
+      - Requires: go get -u -m all
+    cmds:
+      - echo "Checking for outdated dependencies..."
+      - go list -u -m all | grep "\["
+      - echo ""
+      - echo "To update all: go get -u -m all"
+
+  report:
+    desc: 'Generate code quality report'
+    summary: |
+      Comprehensive quality report including:
+      - Code statistics
+      - Test coverage
+      - Vet results
+      - Format check
+    cmds:
+      - echo "=== Code Quality Report ==="
+      - echo ""
+      - echo "Files:"
+      - cmd: find ./internal -name "*.go" -type f | wc -l
+        silent: false
+      - echo ""
+      - echo "Lines of code:"
+      - cmd: find ./internal -name "*.go" -type f -exec wc -l {} + | tail -1
+        silent: false
+      - echo ""
+      - echo "Tests:"
+      - cmd: grep -r "func Test" ./internal --include="*.go" | wc -l
+        silent: false
+      - echo ""
+      - task: fmt:check
+      - task: vet

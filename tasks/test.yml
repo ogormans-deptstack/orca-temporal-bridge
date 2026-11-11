@@ -1,0 +1,154 @@
+version: '3'
+
+# Test tasks for ORCA-Temporal Bridge
+# Included by main Taskfile.yml
+
+tasks:
+  all:
+    desc: 'Run all tests (local, no Temporal required)'
+    summary: |
+      Runs all unit tests across internal packages
+      - Bridge E2E tests (13 tests)
+      - Event translator tests (46 tests)
+      - Race detector enabled
+      - Timeout: 10s
+    cmds:
+      - echo "Running all tests..."
+      - go test -v -race -timeout 10s ./internal/...
+      - echo "✓ All tests passed"
+
+  fast:
+    desc: 'Quick smoke test (< 1s, no coverage)'
+    summary: |
+      Fast subset of tests for rapid feedback
+      - Bridge + Events packages only
+      - No race detector (faster)
+      - Timeout: 10s
+    cmds:
+      - echo "Running fast smoke test..."
+      - go test -timeout 10s ./internal/bridge ./internal/events
+      - echo "✓ Fast tests passed"
+
+  bridge:
+    desc: 'Bridge E2E tests only'
+    summary: |
+      Tests bridge components:
+      - Bridge lifecycle
+      - EventListener subscription
+      - EventFlusher batching
+      - MockEventProvider events
+      - 13 tests total
+    cmds:
+      - echo "Running Bridge E2E tests..."
+      - go test -v -timeout 10s ./internal/bridge/...
+      - echo "✓ Bridge tests passed"
+
+  events:
+    desc: 'Event translator tests only'
+    summary: |
+      Tests event translation:
+      - ORCA event parsing
+      - Temporal event generation
+      - Payload extraction
+      - Validation logic
+      - 46 tests total
+    cmds:
+      - echo "Running Event translator tests..."
+      - go test -v -timeout 10s ./internal/events/...
+      - echo "✓ Event tests passed"
+
+  coverage:
+    desc: 'Run tests with coverage report'
+    summary: |
+      Full test suite with coverage analysis
+      - Generates coverage.out
+      - Creates coverage.html (opens in browser)
+      - Shows coverage by function
+      - Target: 80%+ overall
+    cmds:
+      - echo "Running tests with coverage..."
+      - go test -v -race -timeout 10s -coverprofile=coverage.out ./internal/...
+      - echo ""
+      - echo "Coverage summary:"
+      - go tool cover -func=coverage.out | tail -5
+      - echo ""
+      - echo "Generating HTML report..."
+      - go tool cover -html=coverage.out -o coverage.html
+      - echo "✓ Coverage report: coverage.html"
+      - cmd: |
+          if command -v open &> /dev/null; then
+            open coverage.html
+          else
+            echo "Open coverage.html in your browser"
+          fi
+        silent: true
+
+  with-temporal:
+    desc: 'Integration tests with real Temporal'
+    summary: |
+      Full E2E tests with Temporal running
+      - Requires: docker-compose up -d temporal
+      - Tests actual bridge-to-Temporal flow
+      - Timeout: 30s
+      - Integration tag: -tags=integration
+    preconditions:
+      - sh: docker-compose ps temporal | grep -q Up
+        msg: "Temporal not running. Run: task temporal:up"
+    cmds:
+      - echo "Running integration tests with Temporal..."
+      - go test -v -race -timeout 30s -tags=integration ./internal/bridge ./internal/events
+      - echo "✓ Integration tests passed"
+
+  watch:
+    desc: 'Run tests on file changes (requires entr)'
+    summary: |
+      Watch mode using entr
+      - Watches all .go files in internal/
+      - Re-runs tests on any change
+      - Press Ctrl+C to stop
+      - Install entr: brew install entr
+    preconditions:
+      - sh: command -v entr
+        msg: "entr not installed. Install: brew install entr"
+    cmds:
+      - echo "Running tests in watch mode..."
+      - echo "Press Ctrl+C to stop"
+      - find ./internal -name "*.go" | entr -c task test:fast
+
+  # Verbose variants
+  all:verbose:
+    desc: 'Run all tests with verbose output'
+    cmds:
+      - go test -v -race -timeout 10s -run . ./internal/...
+
+  bridge:verbose:
+    desc: 'Bridge tests with verbose output'
+    cmds:
+      - go test -v -race -timeout 10s ./internal/bridge/...
+
+  events:verbose:
+    desc: 'Event tests with verbose output'
+    cmds:
+      - go test -v -race -timeout 10s ./internal/events/...
+
+  # Single test runner
+  run:
+    desc: 'Run a single test: task test:run TEST=TestBridge_Lifecycle'
+    summary: |
+      Run a specific test by name
+      Usage: task test:run TEST=TestName
+      Example: task test:run TEST=TestBridge_Lifecycle
+    cmds:
+      - go test -v -timeout 10s ./internal/bridge ./internal/events -run {{.TEST}}
+
+  bench:
+    desc: 'Run benchmarks'
+    summary: |
+      Performance benchmarks (TBD for Sprint 1.4)
+      - Will add bridge benchmarks
+      - Event translation benchmarks
+      - Flusher throughput tests
+    cmds:
+      - echo "Benchmarks coming in Sprint 1.4"
+      - echo "Running placeholder benchmarks..."
+      - go test -bench=. -benchmem ./internal/... || true

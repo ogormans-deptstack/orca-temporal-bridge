@@ -1,0 +1,77 @@
+version: '3'
+
+# Build tasks for ORCA-Temporal Bridge
+# Included by main Taskfile.yml
+
+tasks:
+  binary:
+    desc: 'Build binary (./bin/orca-temporal)'
+    summary: |
+      Build the main CLI binary
+      - Formats code first
+      - Runs vet before build
+      - Output: ./bin/orca-temporal
+    deps:
+      - quality:fmt
+      - quality:vet
+    cmds:
+      - echo "Building binary..."
+      - mkdir -p bin
+      - go build -o bin/orca-temporal ./cmd/orca-temporal
+      - echo "✓ Binary: ./bin/orca-temporal"
+      - cmd: |
+          if [ -f bin/orca-temporal ]; then
+            echo "Size: $(du -h bin/orca-temporal | cut -f1)"
+          fi
+        silent: true
+
+  docker:
+    desc: 'Build Docker image'
+    summary: |
+      Build Docker image: orca-temporal-bridge:latest
+      - Uses Dockerfile
+      - Tags as latest
+    cmds:
+      - echo "Building Docker image..."
+      - docker build -t orca-temporal-bridge:latest .
+      - echo "✓ Image built: orca-temporal-bridge:latest"
+      - docker images orca-temporal-bridge:latest --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
+
+  docker:run:
+    desc: 'Build and run Docker image'
+    cmds:
+      - task: docker
+      - echo ""
+      - echo "Running container..."
+      - docker run --network host orca-temporal-bridge:latest --help || true
+
+  clean:
+    desc: 'Clean build artifacts'
+    summary: |
+      Removes:
+      - ./bin directory
+      - coverage.* files
+      - dist directory
+      - *.out, *.html files
+    cmds:
+      - echo "Cleaning build artifacts..."
+      - rm -rf bin dist coverage.* *.out *.html
+      - go clean ./...
+      - echo "✓ Clean complete"
+
+  info:
+    desc: 'Show build information'
+    cmds:
+      - cmd: |
+          echo "=== Build Information ===" && \
+          echo "Go version: $(go version)" && \
+          echo "GOOS: $(go env GOOS)" && \
+          echo "GOARCH: $(go env GOARCH)" && \
+          echo "Go path: $(go env GOPATH)" && \
+          echo "" && \
+          if [ -f bin/orca-temporal ]; then
+            echo "Binary: ./bin/orca-temporal ($(du -h bin/orca-temporal | cut -f1))"
+          else
+            echo "Binary: Not built (run: task build:binary)"
+          fi
+        silent: false
