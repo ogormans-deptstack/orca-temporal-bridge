@@ -1,0 +1,35 @@
+services:
+  temporal:
+    container_name: temporal
+    image: temporalapi/temporal:latest
+    ports:
+      - "7233:7233"  # gRPC
+      - "6933:6933"  # gRPC (TLS)
+      - "7234:7234"  # HTTP
+    environment:
+      - TEMPORAL_LOG_LEVEL=info
+      - TEMPORAL_DB_DRIVER=sqlite
+      - TEMPORAL_DB_DRIVER_SQLITE_FILENAME=/var/lib/temporal/temporal.db
+      - TEMPORAL_PERSISTENCE_NUMHISTORYSHARD=4
+    volumes:
+      - temporal-data:/var/lib/temporal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7234"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  temporal-ui:
+    container_name: temporal-ui
+    image: temporalapi/ui:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+    depends_on:
+      temporal:
+        condition: service_healthy
+
+volumes:
+  temporal-data:
+    driver: local
