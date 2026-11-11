@@ -67,13 +67,19 @@ test-coverage:
 	@echo "✓ Coverage report: coverage.html"
 
 # Integration Tests (requires Temporal)
-test-with-temporal: run-temporal
+test-with-temporal:
 	@echo "Running integration tests with Temporal..."
+	@echo "Checking if Temporal is already running..."
+	@if ! nc -z localhost 7233 2>/dev/null; then \
+		echo "Temporal not running, starting..."; \
+		$(MAKE) run-temporal; \
+	else \
+		echo "✓ Temporal already running"; \
+	fi
 	@echo "Waiting for Temporal to be ready..."
-	@sleep 3
+	@sleep 2
 	@go test -v -race -timeout 30s -tags=integration ./internal/bridge ./internal/events
 	@echo "✓ Integration tests completed"
-	@$(MAKE) stop-temporal
 
 # Code quality
 fmt:
