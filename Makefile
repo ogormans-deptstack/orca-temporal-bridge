@@ -15,7 +15,11 @@ help:
 	@echo "  make test-with-temporal Run full E2E with real Temporal"
 	@echo "  make run-temporal      Start local Temporal server (docker-compose)"
 	@echo "  make stop-temporal     Stop Temporal server"
-	@echo "  make test-setup        Verify Go + Docker setup"
+	@echo ""
+	@echo "Version Management (asdf):"
+	@echo "  make test-setup        Verify environment + asdf status"
+	@echo "  make asdf-install      Install versions from .tool-versions"
+	@echo "  make asdf-verify       Verify installed versions match .tool-versions"
 	@echo ""
 	@echo "Quality Checks:"
 	@echo "  make fmt               Format code (gofmt)"
@@ -106,15 +110,71 @@ stop-temporal:
 
 test-setup:
 	@echo "Verifying local setup..."
+	@echo ""
+	@echo "=== Tool Versions (from .tool-versions) ==="
+	@if [ -f .tool-versions ]; then \
+		cat .tool-versions; \
+		echo ""; \
+	else \
+		echo "⚠ .tool-versions not found"; \
+	fi
+	@echo ""
+	@echo "=== Installed Versions ==="
 	@which go > /dev/null || (echo "✗ Go not installed" && exit 1)
-	@echo "✓ Go installed: $$(go version)"
+	@echo "✓ Go: $$(go version | awk '{print $$3}')"
 	@which docker > /dev/null || (echo "✗ Docker not installed" && exit 1)
-	@echo "✓ Docker installed: $$(docker --version)"
+	@echo "✓ Docker: $$(docker --version | cut -d' ' -f3 | tr -d ',')"
 	@which docker-compose > /dev/null || (echo "✗ Docker Compose not installed" && exit 1)
-	@echo "✓ Docker Compose installed"
+	@echo "✓ Docker Compose: $$(docker-compose --version | awk '{print $$3}' | tr -d ',')"
+	@echo ""
+	@echo "=== asdf Status ==="
+	@if which asdf > /dev/null; then \
+		echo "✓ asdf installed: $$(asdf --version)"; \
+		echo "  Run: asdf install"; \
+		echo "  Then: asdf local golang <version>"; \
+	else \
+		echo "⚠ asdf not installed (optional)"; \
+		echo "  Install: brew install asdf"; \
+		echo "  Setup: asdf plugin add golang"; \
+	fi
 	@echo ""
 	@echo "To run full integration tests:"
 	@echo "  make test-with-temporal"
+
+# asdf version management
+asdf-install:
+	@echo "Installing tools via asdf..."
+	@which asdf > /dev/null || (echo "✗ asdf not installed. Install: brew install asdf" && exit 1)
+	@echo "Setting up asdf plugins..."
+	@asdf plugin add golang 2>/dev/null || echo "  (golang plugin already added)"
+	@asdf plugin add nodejs 2>/dev/null || echo "  (nodejs plugin already added)"
+	@echo ""
+	@echo "Installing versions from .tool-versions..."
+	@asdf install
+	@echo "✓ asdf install complete"
+	@echo ""
+	@echo "Verify:"
+	@echo "  asdf versions"
+	@echo "  go version"
+	@echo "  node --version"
+
+asdf-verify:
+	@echo "Verifying asdf versions..."
+	@which asdf > /dev/null || (echo "✗ asdf not installed" && exit 1)
+	@echo ""
+	@GOLANG_EXPECTED=$$(grep "^golang" .tool-versions | awk '{print $$2}'); \
+	GOLANG_ACTUAL=$$(go version | awk '{print $$3}' | sed 's/go//'); \
+	echo "Go expected: $$GOLANG_EXPECTED"; \
+	echo "Go actual: $$GOLANG_ACTUAL"; \
+	if [[ "$$GOLANG_ACTUAL" =~ ^$$GOLANG_EXPECTED ]]; then \
+		echo "✓ Go version matches"; \
+	else \
+		echo "✗ Go version mismatch!"; \
+		echo "  Run: asdf global golang $$GOLANG_EXPECTED"; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "✓ All versions verified"
 
 coverage:
 	@echo "Generating coverage report..."
