@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package events;
+
+option go_package = "github.com/ogormans-deptstack/orca-temporal-bridge/internal/events";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
+
+// BridgeEvent is the unified event type for ORCA and Temporal events
+message BridgeEvent {
+  string id = 1;                              // Unique event ID
+  google.protobuf.Timestamp timestamp = 2;   // When event occurred
+  string source = 3;                          // "orca" or "temporal"
+  string event_type = 4;                      // Event type (coordinator_started, etc.)
+  
+  // ORCA-specific fields
+  string worktree_id = 5;                     // Which worktree
+  string agent_id = 6;                        // Which agent
+  string agent_role = 7;                      // "coordinator" or "worker"
+  
+  // State transition
+  string previous_state = 8;                  // Previous state
+  string current_state = 9;                   // Current state
+  
+  // Flexible payload (depends on event_type)
+  google.protobuf.Any payload = 10;
+  
+  // Error information (if applicable)
+  string error_message = 11;
+  string error_code = 12;
+}
+
+// AgentStartedPayload: Coordinator or worker agent started
+message AgentStartedPayload {
+  string workflow_id = 1;
+  string task_id = 2;
+  map<string, string> metadata = 3;
+}
+
+// AgentDecisionPayload: Agent made a decision (prompt/response)
+message AgentDecisionPayload {
+  string decision_id = 1;
+  string prompt = 2;
+  string response = 3;
+  int64 duration_ms = 4;
+}
+
+// AgentCompletedPayload: Agent task completed
+message AgentCompletedPayload {
+  string workflow_id = 1;
+  string task_id = 2;
+  bytes result = 3;
+  bool success = 4;
+}
+
+// AgentFailedPayload: Agent task failed
+message AgentFailedPayload {
+  string workflow_id = 1;
+  string task_id = 2;
+  string error = 3;
+  int32 attempt = 4;
+}
+
+// EventConstants
+message EventType {
+  reserved 1 to 15;
+  option deprecated = true;
+}
